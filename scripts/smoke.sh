@@ -120,20 +120,24 @@ for path in /healthz /readyz /version; do
 done
 
 FIXTURE="$ROOT/testdata/contracts/runtime/agent_https_telemetry_device_health_snapshot_v1_valid.json"
+FIRST_FIXTURE="$(mktemp)"
 SECOND_FIXTURE="$(mktemp)"
-trap 'rm -f "$SECOND_FIXTURE"' EXIT
-sed 's/"message_id": "01J00000000000000000000000"/"message_id": "01J00000000000000000000009"/' "$FIXTURE" >"$SECOND_FIXTURE"
+trap 'rm -f "$FIRST_FIXTURE" "$SECOND_FIXTURE"' EXIT
+SMOKE_ID_PREFIX="smoke-$(date +%s)-$$-$RANDOM"
+SMOKE_DEVICE_ID="dev_${SMOKE_ID_PREFIX}"
+sed "s/\"message_id\": \"01J00000000000000000000000\"/\"message_id\": \"${SMOKE_ID_PREFIX}-1\"/" "$FIXTURE" >"$FIRST_FIXTURE"
+sed "s/\"message_id\": \"01J00000000000000000000000\"/\"message_id\": \"${SMOKE_ID_PREFIX}-2\"/" "$FIXTURE" >"$SECOND_FIXTURE"
 
 echo "Checking telemetry-ingest accepts first health snapshot"
 FIRST_RESPONSE="$(
   curl -fsS \
     -H "Content-Type: application/json" \
-    -H "X-HomeSignal-Device-ID: dev_01J00000000000000000000000" \
+    -H "X-HomeSignal-Device-ID: $SMOKE_DEVICE_ID" \
     -H "X-HomeSignal-Site-ID: site_01J00000000000000000000000" \
     -H "X-HomeSignal-Org-ID: org_01J00000000000000000000000" \
     -H "X-Client-Cert-Fingerprint: SHA256:fixture" \
     -H "X-Client-Cert-Serial: 01J00000000000000000000000" \
-    --data-binary @"$FIXTURE" \
+    --data-binary @"$FIRST_FIXTURE" \
     "$TELEMETRY_URL/agent/telemetry"
 )"
 if [[ "$FIRST_RESPONSE" != *'"accepted":true'* || "$FIRST_RESPONSE" != *'"written":true'* ]]; then
@@ -145,7 +149,7 @@ echo "Checking telemetry-ingest suppresses unchanged health snapshot"
 SECOND_RESPONSE="$(
   curl -fsS \
     -H "Content-Type: application/json" \
-    -H "X-HomeSignal-Device-ID: dev_01J00000000000000000000000" \
+    -H "X-HomeSignal-Device-ID: $SMOKE_DEVICE_ID" \
     -H "X-HomeSignal-Site-ID: site_01J00000000000000000000000" \
     -H "X-HomeSignal-Org-ID: org_01J00000000000000000000000" \
     -H "X-Client-Cert-Fingerprint: SHA256:fixture" \

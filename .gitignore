@@ -2,6 +2,7 @@
 */.local/
 */bin/
 backend/dist/
+telemetry-ingest/dist/
 design-mock/dist/
 design-mock/node_modules/
 infra/**/.terraform/

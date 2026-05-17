@@ -69,10 +69,14 @@ type IngestRequest struct {
 }
 
 type IngestResult struct {
-	Accepted   bool      `json:"accepted"`
-	MessageID  string    `json:"message_id,omitempty"`
-	SchemaType string    `json:"schema_type,omitempty"`
-	ReceivedAt time.Time `json:"received_at"`
+	Accepted          bool      `json:"accepted"`
+	Written           bool      `json:"written"`
+	Suppressed        bool      `json:"suppressed"`
+	SuppressionReason string    `json:"suppression_reason,omitempty"`
+	MessageID         string    `json:"message_id,omitempty"`
+	SchemaType        string    `json:"schema_type,omitempty"`
+	MaterialHash      string    `json:"material_hash,omitempty"`
+	ReceivedAt        time.Time `json:"received_at"`
 }
 
 type ValidatedMessage struct {
@@ -121,6 +125,12 @@ type MessageDedupeKey struct {
 	MessageID string
 }
 
+type StateDedupeKey struct {
+	DeviceID      string
+	SchemaType    string
+	SchemaVersion int
+}
+
 type AlertCandidate struct {
 	DeviceID    string
 	CandidateID string
@@ -149,6 +159,8 @@ type SchemaHandler interface {
 type DedupeStore interface {
 	SeenMessage(ctx context.Context, key MessageDedupeKey) (bool, error)
 	RecordMessage(ctx context.Context, key MessageDedupeKey) error
+	LastMaterialHash(ctx context.Context, key StateDedupeKey) (string, bool, error)
+	RecordMaterialHash(ctx context.Context, key StateDedupeKey, materialHash string) error
 }
 
 type LifecycleEvaluator interface {

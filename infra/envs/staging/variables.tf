@@ -49,3 +49,32 @@ variable "artifact_version" {
   type        = string
   default     = "dev"
 }
+
+variable "telemetry_ingest_image" {
+  description = "Fully qualified telemetry-ingest container image URI."
+  type        = string
+}
+
+variable "telemetry_ingest_cpu" {
+  description = "Fargate CPU units for the staging telemetry-ingest task."
+  type        = number
+  default     = 256
+}
+
+variable "telemetry_ingest_memory" {
+  description = "Fargate memory MiB for the staging telemetry-ingest task."
+  type        = number
+  default     = 512
+}
+
+variable "telemetry_ingest_desired_count" {
+  description = "Desired staging telemetry-ingest task count."
+  type        = number
+  default     = 1
+}
+
+variable "telemetry_ingest_ingress_cidr_blocks" {
+  description = "Temporary staging CIDR blocks allowed to call the telemetry-ingest skeleton directly on port 8080 until Agent HTTPS mTLS is wired."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}

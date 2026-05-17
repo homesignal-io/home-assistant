@@ -18,8 +18,13 @@ See `homesignal/README.md` for install and development notes.
 
 ## First Staging Deploy
 
-The first deployable backend slice is the Go control-plane skeleton in
-`backend/`. It exposes only operational endpoints:
+The first deployable backend slices are:
+
+- Go control-plane skeleton in `backend/`, deployed through Lambda/API Gateway.
+- Go telemetry-ingest skeleton in `telemetry-ingest/`, deployed as one small
+  ECS/Fargate task with in-memory dedupe for unchanged telemetry.
+
+The control plane exposes only operational endpoints:
 
 ```text
 GET /healthz
@@ -35,6 +40,7 @@ scripts/build.sh
 scripts/deploy.sh staging
 scripts/smoke.sh staging
 scripts/logs.sh staging
+scripts/logs.sh staging telemetry-ingest
 ```
 
 The staging deploy is pinned to AWS `us-east-1`. Before running

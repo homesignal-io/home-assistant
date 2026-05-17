@@ -23,6 +23,47 @@ func (w *MemoryWriter) Count() int {
 	return len(w.Messages)
 }
 
+type MemoryDedupeStore struct {
+	mu             sync.Mutex
+	messages       map[MessageDedupeKey]struct{}
+	materialHashes map[StateDedupeKey]string
+}
+
+func NewMemoryDedupeStore() *MemoryDedupeStore {
+	return &MemoryDedupeStore{
+		messages:       map[MessageDedupeKey]struct{}{},
+		materialHashes: map[StateDedupeKey]string{},
+	}
+}
+
+func (s *MemoryDedupeStore) SeenMessage(_ context.Context, key MessageDedupeKey) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.messages[key]
+	return ok, nil
+}
+
+func (s *MemoryDedupeStore) RecordMessage(_ context.Context, key MessageDedupeKey) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages[key] = struct{}{}
+	return nil
+}
+
+func (s *MemoryDedupeStore) LastMaterialHash(_ context.Context, key StateDedupeKey) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.materialHashes[key]
+	return value, ok, nil
+}
+
+func (s *MemoryDedupeStore) RecordMaterialHash(_ context.Context, key StateDedupeKey, materialHash string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.materialHashes[key] = materialHash
+	return nil
+}
+
 type MemoryFailureSink struct {
 	mu       sync.Mutex
 	Failures []IngestFailure

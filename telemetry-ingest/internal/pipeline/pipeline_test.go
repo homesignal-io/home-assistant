@@ -61,6 +61,112 @@ func TestRuntimePipelineAcceptsAgentAlarmFixture(t *testing.T) {
 	}
 }
 
+func TestRuntimePipelineSuppressesDuplicateMessage(t *testing.T) {
+	writer := &MemoryWriter{}
+	runtimePipeline := NewRuntimePipeline(writer, &MemoryFailureSink{})
+	body := readContractFixture(t, "agent_https_telemetry_device_health_snapshot_v1_valid.json")
+
+	first, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   body,
+	})
+	if err != nil {
+		t.Fatalf("ingest first message: %v", err)
+	}
+	second, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   body,
+	})
+	if err != nil {
+		t.Fatalf("ingest duplicate message: %v", err)
+	}
+
+	if !first.Written || first.Suppressed {
+		t.Fatalf("expected first write, result=%#v", first)
+	}
+	if !second.Accepted || !second.Suppressed || second.SuppressionReason != "duplicate_message" {
+		t.Fatalf("expected duplicate suppression, result=%#v", second)
+	}
+	if writer.Count() != 1 {
+		t.Fatalf("expected one write after duplicate, got %d", writer.Count())
+	}
+}
+
+func TestRuntimePipelineSuppressesUnchangedTelemetryMaterial(t *testing.T) {
+	writer := &MemoryWriter{}
+	runtimePipeline := NewRuntimePipeline(writer, &MemoryFailureSink{})
+	firstBody := readContractFixture(t, "agent_https_telemetry_device_health_snapshot_v1_valid.json")
+	secondBody := bytes.ReplaceAll(
+		firstBody,
+		[]byte(`"message_id": "01J00000000000000000000000"`),
+		[]byte(`"message_id": "01J00000000000000000000009"`),
+	)
+
+	first, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   firstBody,
+	})
+	if err != nil {
+		t.Fatalf("ingest first message: %v", err)
+	}
+	second, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   secondBody,
+	})
+	if err != nil {
+		t.Fatalf("ingest unchanged message: %v", err)
+	}
+
+	if !first.Written || first.MaterialHash == "" {
+		t.Fatalf("expected first material write, result=%#v", first)
+	}
+	if !second.Accepted || !second.Suppressed || second.SuppressionReason != "unchanged_material" {
+		t.Fatalf("expected unchanged suppression, result=%#v", second)
+	}
+	if first.MaterialHash != second.MaterialHash {
+		t.Fatalf("expected same material hash, first=%s second=%s", first.MaterialHash, second.MaterialHash)
+	}
+	if writer.Count() != 1 {
+		t.Fatalf("expected one write after unchanged telemetry, got %d", writer.Count())
+	}
+}
+
+func TestRuntimePipelineWritesMaterialChange(t *testing.T) {
+	writer := &MemoryWriter{}
+	runtimePipeline := NewRuntimePipeline(writer, &MemoryFailureSink{})
+
+	first, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   readContractFixture(t, "agent_https_telemetry_device_health_snapshot_v1_valid.json"),
+	})
+	if err != nil {
+		t.Fatalf("ingest first message: %v", err)
+	}
+	second, err := runtimePipeline.Ingest(context.Background(), IngestRequest{
+		Route:  RouteTelemetry,
+		Device: testDeviceContext(),
+		Body:   readContractFixture(t, "agent_https_telemetry_device_health_snapshot_v1_degraded.json"),
+	})
+	if err != nil {
+		t.Fatalf("ingest changed message: %v", err)
+	}
+
+	if !first.Written || !second.Written {
+		t.Fatalf("expected both material states to write, first=%#v second=%#v", first, second)
+	}
+	if first.MaterialHash == second.MaterialHash {
+		t.Fatalf("expected material hash to change")
+	}
+	if writer.Count() != 2 {
+		t.Fatalf("expected two writes after material change, got %d", writer.Count())
+	}
+}
+
 func TestRuntimePipelineRejectsUnsupportedSchemaWithoutWriting(t *testing.T) {
 	writer := &MemoryWriter{}
 	failures := &MemoryFailureSink{}

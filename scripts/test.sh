@@ -11,6 +11,7 @@ fi
 
 MODULES=(
   backend
+  telemetry-ingest
   homesignal
 )
 

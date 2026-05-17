@@ -10,6 +10,7 @@ BUDGET_GUARDRAIL_CONFIRMED="${HOMESIGNAL_BUDGET_GUARDRAIL_CONFIRMED:-}"
 CREATE_BUDGET="${HOMESIGNAL_CREATE_STAGING_BUDGET:-0}"
 MONTHLY_BUDGET_AMOUNT="${HOMESIGNAL_STAGING_BUDGET_AMOUNT:-25}"
 OWNER_TAG="${HOMESIGNAL_OWNER_TAG:-platform}"
+TELEMETRY_IMAGE_TAG="${HOMESIGNAL_TELEMETRY_IMAGE_TAG:-}"
 
 fail() {
   echo "$1" >&2
@@ -44,6 +45,7 @@ if [[ "$REGION" != "us-east-1" ]]; then
 fi
 
 require_command aws
+require_command docker
 
 TF_BIN="$(terraform_command || true)"
 if [[ -z "$TF_BIN" ]]; then
@@ -63,6 +65,7 @@ if [[ -z "$VERSION" ]] && command -v git >/dev/null 2>&1; then
   VERSION="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || true)"
 fi
 VERSION="${VERSION:-dev}"
+TELEMETRY_IMAGE_TAG="${TELEMETRY_IMAGE_TAG:-$VERSION}"
 
 echo "Deploying HomeSignal staging"
 echo "  account: $ACCOUNT_ID"
@@ -91,6 +94,32 @@ HOMESIGNAL_VERSION="$VERSION" "$ROOT/scripts/build.sh"
 (
   cd "$ROOT/infra/envs/staging"
   "$TF_BIN" init
+
+  "$TF_BIN" apply \
+    -auto-approve \
+    -target=aws_ecr_repository.telemetry_ingest \
+    -var="aws_region=$REGION" \
+    -var="lambda_package_path=$ROOT/backend/dist/control-plane/bootstrap.zip" \
+    -var="artifact_version=$VERSION" \
+    -var="budget_alert_email=$BUDGET_ALERT_EMAIL" \
+    -var="create_budget=$([[ "$CREATE_BUDGET" == "1" ]] && echo true || echo false)" \
+    -var="monthly_budget_amount=$MONTHLY_BUDGET_AMOUNT" \
+    -var="owner_tag=$OWNER_TAG" \
+    -var="telemetry_ingest_image=bootstrap"
+
+  TELEMETRY_ECR_REPOSITORY_URL="$("$TF_BIN" output -raw telemetry_ingest_ecr_repository_url)"
+  TELEMETRY_ECR_REGISTRY="${TELEMETRY_ECR_REPOSITORY_URL%/*}"
+  TELEMETRY_IMAGE="$TELEMETRY_ECR_REPOSITORY_URL:$TELEMETRY_IMAGE_TAG"
+
+  echo "Logging into telemetry-ingest ECR registry"
+  aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$TELEMETRY_ECR_REGISTRY"
+
+  echo "Building telemetry-ingest container image"
+  docker build --platform linux/arm64 -t "$TELEMETRY_IMAGE" "$ROOT/telemetry-ingest"
+
+  echo "Pushing telemetry-ingest container image"
+  docker push "$TELEMETRY_IMAGE"
+
   "$TF_BIN" apply \
     -auto-approve \
     -var="aws_region=$REGION" \
@@ -99,8 +128,10 @@ HOMESIGNAL_VERSION="$VERSION" "$ROOT/scripts/build.sh"
     -var="budget_alert_email=$BUDGET_ALERT_EMAIL" \
     -var="create_budget=$([[ "$CREATE_BUDGET" == "1" ]] && echo true || echo false)" \
     -var="monthly_budget_amount=$MONTHLY_BUDGET_AMOUNT" \
-    -var="owner_tag=$OWNER_TAG"
+    -var="owner_tag=$OWNER_TAG" \
+    -var="telemetry_ingest_image=$TELEMETRY_IMAGE"
 
   echo "Deploy complete"
   echo "  staging_base_url: $("$TF_BIN" output -raw staging_base_url)"
+  echo "  telemetry_ingest_image: $TELEMETRY_IMAGE"
 )

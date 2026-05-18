@@ -1275,6 +1275,13 @@ Acceptance:
 
 ### M8.2 MQTT Command Publisher Adapter
 
+Status: first payload/adapter seam implemented. `CommandNoticePublisher`
+publishes tiny QoS 1 MQTT notices to
+`homesignal/devices/{device_id}/commands`, with a fixture-backed JSON contract
+and guardrails against topic wildcards, oversized payloads, signed URLs, and
+secret-bearing keys. A real AWS IoT Data Plane adapter and live device smoke
+remain follow-up work.
+
 Scope:
 
 - Publish tiny command notices to `homesignal/devices/{device_id}/commands`.

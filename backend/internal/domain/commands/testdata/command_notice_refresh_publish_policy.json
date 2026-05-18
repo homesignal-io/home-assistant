@@ -1,0 +1,1 @@
+{"command_id":"cmd_123","command_type":"refresh_publish_policy","device_id":"dev_123","issued_at":"2026-05-18T12:00:01Z","expires_at":"2026-05-18T12:00:16Z","payload":{"reason":"over_budget"}}

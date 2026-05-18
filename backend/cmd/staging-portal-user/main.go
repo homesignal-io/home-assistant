@@ -153,16 +153,27 @@ ON CONFLICT (user_id) DO UPDATE SET
 		return fmt.Errorf("upsert user: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-INSERT INTO roles (role_id, account_id, name, description, is_system)
-VALUES ($1, NULL, 'owner', 'Staging owner role for first portal bootstrap.', true)
-ON CONFLICT (role_id) DO UPDATE SET
-  description = EXCLUDED.description,
-  is_system = true,
-  archived_at = NULL,
-  updated_at = now()
-`, stagingOwnerRole); err != nil {
-		return fmt.Errorf("upsert owner role: %w", err)
+	var ownerRoleID string
+	if err := tx.QueryRowContext(ctx, `
+WITH existing AS (
+  SELECT role_id
+  FROM roles
+  WHERE account_id IS NULL
+    AND name = 'owner'
+  LIMIT 1
+),
+inserted AS (
+  INSERT INTO roles (role_id, account_id, name, description, is_system)
+  SELECT $1, NULL, 'owner', 'Staging owner role for first portal bootstrap.', true
+  WHERE NOT EXISTS (SELECT 1 FROM existing)
+  RETURNING role_id
+)
+SELECT role_id FROM inserted
+UNION ALL
+SELECT role_id FROM existing
+LIMIT 1
+`, stagingOwnerRole).Scan(&ownerRoleID); err != nil {
+		return fmt.Errorf("resolve owner role: %w", err)
 	}
 
 	for _, permission := range ownerPermissions {
@@ -170,7 +181,7 @@ ON CONFLICT (role_id) DO UPDATE SET
 INSERT INTO role_permissions (role_id, action)
 VALUES ($1, $2)
 ON CONFLICT (role_id, action) DO NOTHING
-`, stagingOwnerRole, permission); err != nil {
+`, ownerRoleID, permission); err != nil {
 			return fmt.Errorf("upsert owner permission %s: %w", permission, err)
 		}
 	}
@@ -183,7 +194,7 @@ ON CONFLICT (account_id, user_id) DO UPDATE SET
   status = 'active',
   removed_at = NULL,
   updated_at = now()
-`, stagingAccountID, user.ID, stagingOwnerRole); err != nil {
+`, stagingAccountID, user.ID, ownerRoleID); err != nil {
 		return fmt.Errorf("upsert account membership: %w", err)
 	}
 

@@ -1677,6 +1677,11 @@ Acceptance:
 
 ### M11.4 Notification Service
 
+Status: implemented as a domain/platform seam. Notification attempts,
+suppressions, fake provider, outbox processor, basic alert email rendering, and
+Resend provider adapter/config guardrails exist. Live Resend API key and sender
+verification remain external deploy prerequisites.
+
 Scope:
 
 - Add `notification_attempts` migration.

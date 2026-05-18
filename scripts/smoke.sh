@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENVIRONMENT="${1:-}"
 BASE_URL="${HOMESIGNAL_STAGING_BASE_URL:-}"
 REGION="${HOMESIGNAL_AWS_REGION:-${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}}"
+API_BEARER_TOKEN="${HOMESIGNAL_STAGING_API_BEARER_TOKEN:-}"
 
 terraform_command() {
   if command -v tofu >/dev/null 2>&1; then
@@ -64,6 +65,23 @@ PUBLIC_STATUS="$(
 if [[ "$PUBLIC_STATUS" != "401" ]]; then
   echo "Unexpected /api/v1/dashboard status: $PUBLIC_STATUS" >&2
   exit 1
+fi
+
+if [[ -n "$API_BEARER_TOKEN" ]]; then
+  echo "Checking authenticated public API dashboard read"
+  AUTH_PUBLIC_STATUS="$(
+    curl -sS \
+      -H "Authorization: Bearer $API_BEARER_TOKEN" \
+      -o /dev/null \
+      -w "%{http_code}" \
+      "$BASE_URL/api/v1/dashboard"
+  )"
+  if [[ "$AUTH_PUBLIC_STATUS" != "200" ]]; then
+    echo "Unexpected authenticated /api/v1/dashboard status: $AUTH_PUBLIC_STATUS" >&2
+    exit 1
+  fi
+else
+  echo "Skipping authenticated public API read; HOMESIGNAL_STAGING_API_BEARER_TOKEN is not set"
 fi
 
 TF_BIN="$(terraform_command || true)"

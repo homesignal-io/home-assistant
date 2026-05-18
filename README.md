@@ -46,6 +46,12 @@ scripts/logs.sh staging
 scripts/logs.sh staging telemetry-ingest
 ```
 
+The portal uses contract fixtures unless `VITE_HOMESIGNAL_API_BASE_URL` is set
+to the public API `/api/v1` base. For authenticated staging reads, also set
+`VITE_HOMESIGNAL_API_TOKEN` to a short-lived Cognito access token. The staging
+smoke script accepts the same kind of token through
+`HOMESIGNAL_STAGING_API_BEARER_TOKEN`.
+
 The staging deploy is pinned to AWS `us-east-1`. Before running
 `scripts/deploy.sh staging`, use a named AWS deploy principal and provide either
 `HOMESIGNAL_BUDGET_ALERT_EMAIL` so Terraform can create the staging budget

@@ -98,6 +98,7 @@ resource "aws_apigatewayv2_route" "control_plane" {
     "GET /healthz",
     "GET /readyz",
     "GET /version",
+    "ANY /api/v1/{proxy+}",
   ])
 
   api_id    = aws_apigatewayv2_api.public.id

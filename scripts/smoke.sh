@@ -54,6 +54,18 @@ for path in /healthz /readyz /version; do
   curl -fsS "$BASE_URL$path" >/dev/null
 done
 
+echo "Checking public API shell requires authentication"
+PUBLIC_STATUS="$(
+  curl -sS \
+    -o /dev/null \
+    -w "%{http_code}" \
+    "$BASE_URL/api/v1/dashboard"
+)"
+if [[ "$PUBLIC_STATUS" != "401" ]]; then
+  echo "Unexpected /api/v1/dashboard status: $PUBLIC_STATUS" >&2
+  exit 1
+fi
+
 TF_BIN="$(terraform_command || true)"
 if [[ -z "$TF_BIN" ]]; then
   echo "Missing required command: tofu or terraform" >&2

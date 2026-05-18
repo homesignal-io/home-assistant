@@ -115,15 +115,17 @@ The first staging deploy is script-driven and intentionally narrow:
 - service: Go control-plane skeleton in `backend/`
 - runtime: Lambda custom runtime behind HTTP API Gateway
 - region: `us-east-1`
-- routes: `GET /healthz`, `GET /readyz`, and `GET /version`
+- routes: `GET /healthz`, `GET /readyz`, `GET /version`, and public
+  `/api/v1/*`
 - IaC: `infra/envs/staging`
 - scripts: `scripts/test.sh`, `scripts/build.sh`, `scripts/deploy.sh staging`,
   `scripts/smoke.sh staging`, and `scripts/logs.sh staging`
 
-It does not include database access, Cognito/auth, AWS IoT, Agent mTLS, email,
-object storage, product routes, production, or CI/CD. CI/CD wraps these scripts
-only after `scripts/deploy.sh staging` and `scripts/smoke.sh staging` work
-locally.
+It does not include real database access from product routes, Cognito/auth, Agent
+mTLS, email, object storage, production, or CI/CD. Public product route shells
+may be exposed for contract and auth-boundary smokes before domain behavior is
+implemented. CI/CD wraps these scripts only after `scripts/deploy.sh staging`
+and `scripts/smoke.sh staging` work locally.
 
 The first staging cloud deploy requires either `HOMESIGNAL_BUDGET_ALERT_EMAIL`
 for the staging budget guardrail task, or

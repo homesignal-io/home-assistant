@@ -553,7 +553,8 @@ Acceptance:
 Status: implemented as route-family shell plus public OpenAPI guardrail.
 `backend/openapi/public-v1.yaml` owns public `/api/v1` operation IDs, and
 `backend/internal/controlplane` rejects route-family calls at the correct auth
-boundary before returning not-implemented stubs.
+boundary before returning not-implemented stubs. Staging exposes `/api/v1/*`
+through API Gateway while keeping `/internal/*` unexposed.
 
 Scope:
 

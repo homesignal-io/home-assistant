@@ -5,7 +5,8 @@ control-plane smoke runtime, the telemetry-ingest runtime skeleton, and the
 first AWS IoT Core routing resources:
 
 - Lambda custom runtime for the Go `control-plane` service.
-- HTTP API routes for `GET /healthz`, `GET /readyz`, and `GET /version`.
+- HTTP API routes for `GET /healthz`, `GET /readyz`, `GET /version`, and the
+  public `/api/v1/*` route family.
 - ECR repository and one ECS/Fargate `telemetry-ingest` task.
 - Temporary direct staging HTTP access to telemetry-ingest on port `8080` for
   smoke tests until Agent HTTPS mTLS is wired.

@@ -204,6 +204,11 @@ Implementation checkpoint, 2026-05-14:
   fixture tests. Remaining Phase 3 work is implementation depth: policy-budget
   enforcement, quarantine persistence, material hashing, and refresh-policy
   remediation hooks.
+- Phase 5 has a first Postgres writer path for accepted latest-state upserts,
+  sparse event inserts, failure rows, and telemetry last-seen updates. The
+  current staging smoke seeds and cleans a `dev_smoke-*` device fixture before
+  posting telemetry so persistence is FK-backed. Full authority resolution and
+  production-grade backpressure remain later phases.
 
 ### Phase 1: Service Skeleton And Contract Example Tests
 

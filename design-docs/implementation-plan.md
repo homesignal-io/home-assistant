@@ -1025,6 +1025,14 @@ Acceptance:
 
 ### M6.4 Persistence And Dedupe
 
+Status: first staging path implemented. Telemetry Ingest now keeps the memory
+dedupe/coalescing path and can persist accepted material changes to Postgres
+when `HOMESIGNAL_DATABASE_URL` is injected. Staging smoke seeds a
+`dev_smoke-*` fixture device, verifies accepted plus unchanged-suppressed
+telemetry, then cleans the fixture. Full device-authority resolution remains
+M6.5/M5-dependent; current direct staging smoke still uses trusted fixture
+headers.
+
 Scope:
 
 - Latest-state upserts.

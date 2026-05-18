@@ -8,6 +8,8 @@ first AWS IoT Core routing resources:
 - HTTP API routes for `GET /healthz`, `GET /readyz`, `GET /version`, and the
   public `/api/v1/*` route family.
 - ECR repository and one ECS/Fargate `telemetry-ingest` task.
+- Secrets Manager injection of the staging database URL into telemetry-ingest
+  so accepted smoke telemetry can persist to Postgres.
 - Temporary direct staging HTTP access to telemetry-ingest on port `8080` for
   smoke tests until Agent HTTPS mTLS is wired.
 - AWS IoT device policy, Thing type, lifecycle topic rule, and lifecycle log
@@ -61,6 +63,14 @@ Then run:
 ```bash
 scripts/migrate.sh staging up
 scripts/smoke.sh staging
+```
+
+The smoke script creates and cleans a non-customer `dev_smoke-*` fixture device
+around the telemetry checks. To run those fixture steps manually:
+
+```bash
+scripts/staging-fixtures.sh staging seed-telemetry-device <dev_smoke-...>
+scripts/cleanup-staging-fixtures.sh staging <dev_smoke-...>
 ```
 
 ## State

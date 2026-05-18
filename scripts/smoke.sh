@@ -132,13 +132,20 @@ for path in /healthz /readyz /version; do
 done
 
 FIXTURE="$ROOT/testdata/contracts/runtime/agent_https_telemetry_device_health_snapshot_v1_valid.json"
-FIRST_FIXTURE="$(mktemp)"
-SECOND_FIXTURE="$(mktemp)"
-trap 'rm -f "$FIRST_FIXTURE" "$SECOND_FIXTURE"' EXIT
 SMOKE_ID_PREFIX="smoke-$(date +%s)-$$-$RANDOM"
 SMOKE_DEVICE_ID="dev_${SMOKE_ID_PREFIX}"
+FIRST_FIXTURE="$(mktemp)"
+SECOND_FIXTURE="$(mktemp)"
+cleanup_smoke() {
+  rm -f "$FIRST_FIXTURE" "$SECOND_FIXTURE"
+  "$ROOT/scripts/cleanup-staging-fixtures.sh" staging "$SMOKE_DEVICE_ID" >/dev/null 2>&1 || true
+}
+trap cleanup_smoke EXIT
 sed "s/\"message_id\": \"01J00000000000000000000000\"/\"message_id\": \"${SMOKE_ID_PREFIX}-1\"/" "$FIXTURE" >"$FIRST_FIXTURE"
 sed "s/\"message_id\": \"01J00000000000000000000000\"/\"message_id\": \"${SMOKE_ID_PREFIX}-2\"/" "$FIXTURE" >"$SECOND_FIXTURE"
+
+echo "Seeding staging telemetry fixture"
+"$ROOT/scripts/staging-fixtures.sh" staging seed-telemetry-device "$SMOKE_DEVICE_ID" >/dev/null
 
 echo "Checking telemetry-ingest accepts first health snapshot"
 FIRST_RESPONSE="$(

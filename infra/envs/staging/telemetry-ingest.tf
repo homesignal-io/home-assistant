@@ -70,6 +70,24 @@ resource "aws_iam_role_policy_attachment" "telemetry_ingest_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "telemetry_ingest_task_execution_secrets" {
+  name = "${local.resource_prefix}-telemetry-ingest-exec-secrets"
+  role = aws_iam_role.telemetry_ingest_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = aws_secretsmanager_secret.database_url.arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "telemetry_ingest_task" {
   name = "${local.resource_prefix}-telemetry-ingest-task-role"
 
@@ -164,6 +182,13 @@ resource "aws_ecs_task_definition" "telemetry_ingest" {
         }
       ]
 
+      secrets = [
+        {
+          name      = "HOMESIGNAL_DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        }
+      ]
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -198,6 +223,7 @@ resource "aws_ecs_service" "telemetry_ingest" {
 
   depends_on = [
     aws_iam_role_policy_attachment.telemetry_ingest_task_execution,
+    aws_iam_role_policy.telemetry_ingest_task_execution_secrets,
   ]
 
   tags = {
